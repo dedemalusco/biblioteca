@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblioteca Escolar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        body.dark {
+            background-color: #2b2b2b;
+            color: #ddd;
+        }
+
+        h1, h2 {
+            color: #007bff;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease-in-out;
+            margin: 20px auto;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 10px 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 100%;
+            transition: border-color 0.3s ease-in-out;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            border-color: #007bff;
+        }
+
+        button {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Botões posicionados na borda superior direita */
+        .button-container {
+            position: fixed;
+            top: 0;
+            right: 0;
+            margin: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        /* Estilo para os formulários */
+        .form-container {
+            display: none; /* Inicialmente oculto */
+            text-align: center; /* Alinhamento no centro */
+        }
+
+        /* Estilo para mostrar os formulários quando estiverem visíveis */
+        .form-container.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Biblioteca Escolar</h1>
+    <ul id="lista-livros">
+        <!-- Iterar sobre a lista de livros e criar uma entrada para cada livro -->
+        {% for livro in livros %}
+        <li>
+            <strong>{{ livro.titulo }}</strong> - {{ livro.autor }} - Disponíveis: {{ livro.exemplares_disponiveis }}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<!-- Container para os botões -->
+<div class="button-container">
+    <!-- Botão para adicionar novo livro -->
+    <button onclick="toggleForm('adicionar-container')">Novos livros</button>
+    <!-- Botão para empréstimos -->
+    <button onclick="toggleForm('emprestar-container')">Empréstimos</button>
+    <!-- Botão para devoluções -->
+    <button onclick="toggleForm('devolver-container')">Devoluções</button>
+</div>
+
+<!-- Container para os formulários -->
+<div class="container">
+    <!-- Formulário para adicionar novo livro -->
+    <div id="adicionar-container" class="form-container">
+        <h2>Adicionar Novo Livro</h2>
+        <form action="/adicionar_livro" method="post">
+            <input type="text" name="titulo" placeholder="Título do livro" required>
+            <input type="text" name="autor" placeholder="Autor" required>
+            <input type="number" name="exemplares" placeholder="Quantidade" required>
+            <button type="submit">Adicionar Livro</button>
+        </form>
+    </div>
+
+    <!-- Formulário para empréstimos -->
+    <div id="emprestar-container" class="form-container">
+        <h2>Emprestar Livro</h2>
+        <form action="/emprestar_livro" method="post">
+            <input type="text" name="pesquisa" placeholder="Título do livro" required>
+            <input type="text" name="aluno" placeholder="Aluno" required>
+            <input type="number" name="quantidade" placeholder="Quantidade" required>
+            <button type="submit">Emprestar</button>
+        </form>
+    </div>
+
+<!-- Formulário para devoluções -->
+<div id="devolver-container" class="form-container">
+    <h2>Devolver Livro</h2>
+    <form action="/devolver_livro" method="post">
+        <input type="text" name="titulo" placeholder="Título do livro" required>
+        <input type="text" name="aluno" placeholder="Aluno" required>
+        <!-- Adicionando entrada para a quantidade de livros devolvidos -->
+        <input type="number" name="quantidade" placeholder="Quantidade" required>
+        <button type="submit">Devolver</button>
+        <!-- Removendo o botão "Devolver Todos" -->
+    </form>
+    <!-- Lista de empréstimos -->
+    <div id="emprestimos-container">
+        <h2>Lista de Empréstimos</h2>
+        <ul id="lista-emprestimos"></ul>
+    </div>
+</div>
+
+<script>
+    function toggleForm(containerId) {
+        const container = document.getElementById(containerId);
+        container.classList.toggle('active'); // Alternar a classe 'active' para mostrar/ocultar o formulário
+    }
+
+    // Função para formatar a data no formato brasileiro (dd/mm/yyyy)
+    function formatarData(data) {
+        return new Date(data).toLocaleDateString('pt-BR');
+    }
+
+    // Função para carregar a lista de empréstimos quando a página carregar
+    window.onload = function () {
+        fetch('/livros_emprestados_json')
+            .then(response => response.json())
+            .then(data => {
+                const listaEmprestimos = document.getElementById('lista-emprestimos');
+                listaEmprestimos.innerHTML = ''; // Limpar a lista antes de adicionar os novos itens
+
+                data.forEach(emprestimo => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `<strong>${emprestimo.titulo}</strong> - ${emprestimo.autor} - Aluno: ${emprestimo.aluno} - Horário: ${formatarData(emprestimo.horario_emprestimo)} - Quantidade: ${emprestimo.quantidade}`;
+                    listaEmprestimos.appendChild(listItem);
+                });
+            })
+            .catch(error => console.error('Erro ao carregar a lista de empréstimos:', error));
+    }
+</script>
+
+
+</body>
+</html>
